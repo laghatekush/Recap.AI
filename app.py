@@ -1,36 +1,26 @@
-# app.py - Standalone Recap.AI with Optional AI Features
-
 import streamlit as st
 import json
 import os
 from datetime import datetime, timedelta, date
 
-# Try to import Google Generative AI, make it completely optional
 try:
     import google.generativeai as genai
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
 
-# Set up the page
 st.set_page_config(page_title="Recap.AI", page_icon="📝", layout="wide")
 st.title("📝 Recap.AI - Daily Work Logger")
 st.write("Log your daily work and generate summaries!")
 
-# Your API key (only used if genai is available)
 GEMINI_API_KEY = "AIzaSyDcT1zigN6J2osDvFNqNZbB_oJ_fEdTbXA"
 
-# Initialize session state for editing
 if 'editing_entry' not in st.session_state:
     st.session_state.editing_entry = None
 if 'show_delete_confirm' not in st.session_state:
     st.session_state.show_delete_confirm = None
 
-# Function to save work to JSON file
 def save_work_to_file(work_text, entry_date=None, entry_time=None):
-    """This function saves work to our data.json file"""
-    
-    # Step 1: Read existing data from file
     if os.path.exists("data.json"):
         with open("data.json", "r") as file:
             try:
@@ -40,7 +30,6 @@ def save_work_to_file(work_text, entry_date=None, entry_time=None):
     else:
         data = {"work_logs": []}
     
-    # Step 2: Create new work entry
     if entry_date is None:
         entry_date = datetime.now().strftime("%Y-%m-%d")
     if entry_time is None:
@@ -54,18 +43,14 @@ def save_work_to_file(work_text, entry_date=None, entry_time=None):
         "timestamp": datetime.now().isoformat()
     }
     
-    # Step 3: Add new entry to our data
     data["work_logs"].append(new_entry)
     
-    # Step 4: Save back to file
     with open("data.json", "w") as file:
         json.dump(data, file, indent=2)
     
     return True
 
-# Function to update existing entry
 def update_work_entry(entry_id, work_text, entry_date, entry_time):
-    """Update an existing work entry"""
     if not os.path.exists("data.json"):
         return False
     
@@ -75,7 +60,6 @@ def update_work_entry(entry_id, work_text, entry_date, entry_time):
     except json.JSONDecodeError:
         return False
     
-    # Find and update the entry
     for i, log in enumerate(data["work_logs"]):
         if log["id"] == entry_id:
             data["work_logs"][i]["work"] = work_text
@@ -83,16 +67,13 @@ def update_work_entry(entry_id, work_text, entry_date, entry_time):
             data["work_logs"][i]["time"] = entry_time
             data["work_logs"][i]["updated_timestamp"] = datetime.now().isoformat()
             
-            # Save back to file
             with open("data.json", "w") as file:
                 json.dump(data, file, indent=2)
             return True
     
     return False
 
-# Function to delete entry
 def delete_work_entry(entry_id):
-    """Delete a work entry"""
     if not os.path.exists("data.json"):
         return False
     
@@ -102,18 +83,14 @@ def delete_work_entry(entry_id):
     except json.JSONDecodeError:
         return False
     
-    # Find and remove the entry
     data["work_logs"] = [log for log in data["work_logs"] if log["id"] != entry_id]
     
-    # Save back to file
     with open("data.json", "w") as file:
         json.dump(data, file, indent=2)
     
     return True
 
-# Function to get this week's work logs
 def get_this_weeks_logs():
-    """Get all work logs from this week"""
     if not os.path.exists("data.json"):
         return []
     
@@ -124,12 +101,10 @@ def get_this_weeks_logs():
     except (json.JSONDecodeError, FileNotFoundError):
         return []
     
-    # Get Monday of this week
     today = datetime.now()
     monday = today - timedelta(days=today.weekday())
     monday_str = monday.strftime("%Y-%m-%d")
     
-    # Filter logs from this week
     this_week_logs = []
     for log in work_logs:
         if log["date"] >= monday_str:
@@ -137,9 +112,7 @@ def get_this_weeks_logs():
     
     return this_week_logs
 
-# Function to get all work logs
 def get_all_logs():
-    """Get all work logs"""
     if not os.path.exists("data.json"):
         return []
     
@@ -150,32 +123,24 @@ def get_all_logs():
     except (json.JSONDecodeError, FileNotFoundError):
         return []
 
-# Function to get entry by ID
 def get_entry_by_id(entry_id):
-    """Get a specific entry by its ID"""
     all_logs = get_all_logs()
     for log in all_logs:
         if log["id"] == entry_id:
             return log
     return None
 
-# Function to generate AI summary using Gemini (if available)
 def generate_ai_summary(weekly_logs):
-    """Use Google Gemini to create a weekly summary or create a basic summary"""
-    
     if not weekly_logs:
         return "No work logs found for this week."
     
-    # If AI is not available, create a basic summary
     if not GENAI_AVAILABLE:
         return generate_basic_summary(weekly_logs)
     
-    # Prepare the work logs text
     logs_text = ""
     for log in weekly_logs:
         logs_text += f"Date: {log['date']} at {log['time']}\nWork: {log['work']}\n\n"
     
-    # Create the prompt for AI
     prompt = f"""
     Based on these daily work logs from this week, create a comprehensive weekly summary:
 
@@ -195,38 +160,26 @@ def generate_ai_summary(weekly_logs):
     """
     
     try:
-        # Configure Gemini with the API key
         genai.configure(api_key=GEMINI_API_KEY)
-        
-        # Create the model
         model = genai.GenerativeModel('gemini-pro')
-        
-        # Generate response
         response = model.generate_content(prompt)
-        
         return response.text
         
     except Exception as e:
         st.error(f"AI service error: {str(e)}")
         return generate_basic_summary(weekly_logs)
 
-# Function to generate basic summary without AI
 def generate_basic_summary(weekly_logs):
-    """Generate a basic summary without AI"""
-    
     if not weekly_logs:
         return "No work logs found for this week."
     
-    # Sort logs by date
     sorted_logs = sorted(weekly_logs, key=lambda x: (x['date'], x['time']))
     
-    # Count entries per day
     daily_counts = {}
     for log in sorted_logs:
         date_str = log['date']
         daily_counts[date_str] = daily_counts.get(date_str, 0) + 1
     
-    # Create basic summary
     summary = f"""# Weekly Summary - {len(weekly_logs)} Work Entries
 
 ## 📊 Overview
@@ -261,14 +214,11 @@ def generate_basic_summary(weekly_logs):
     
     return summary
 
-# Create tabs for different sections
 tab1, tab2, tab3, tab4 = st.tabs(["📝 Add Work Entry", "📊 Weekly Summary", "🛠️ Manage Entries", "📋 View All Logs"])
 
-# TAB 1: Add Work Entry
 with tab1:
     st.header("Add Your Work Entry")
     
-    # Date and time selection
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
@@ -292,7 +242,6 @@ with tab1:
         elif entry_date == date.today():
             st.success("📅 Adding entry for today")
     
-    # Work description
     col1, col2 = st.columns([3, 1])
     
     with col1:
@@ -321,7 +270,6 @@ with tab1:
                 st.success("✅ Your work entry has been saved successfully!")
                 st.balloons()
                 
-                # Show preview of saved entry
                 with st.expander("📋 Entry Preview", expanded=True):
                     st.write(f"**Date:** {entry_date.strftime('%Y-%m-%d')}")
                     st.write(f"**Time:** {entry_time.strftime('%H:%M')}")
@@ -332,12 +280,10 @@ with tab1:
         else:
             st.warning("⚠️ Please write something about your work before saving!")
 
-    # Show recent work entries
     st.subheader("📂 Recent Work Entries")
     all_logs = get_all_logs()
     
     if all_logs:
-        # Show last 5 entries
         recent_logs = sorted(all_logs, key=lambda x: (x['date'], x['time']), reverse=True)[:5]
         for i, log in enumerate(recent_logs):
             with st.expander(f"📅 {log['date']} at {log['time']}", expanded=(i==0)):
@@ -345,17 +291,14 @@ with tab1:
     else:
         st.info("No work entries yet. Add your first entry above!")
 
-# TAB 2: Weekly Summary
 with tab2:
     st.header("📊 Weekly Summary Generator")
     
-    # Show AI status
     if GENAI_AVAILABLE:
         st.success("🤖 AI-powered summaries available!")
     else:
         st.info("📝 Basic summaries available (AI features disabled - google-generativeai not installed)")
     
-    # Get this week's logs
     weekly_logs = get_this_weeks_logs()
     
     if weekly_logs:
@@ -368,7 +311,6 @@ with tab2:
             week_start = datetime.now() - timedelta(days=datetime.now().weekday())
             st.info(f"Week of {week_start.strftime('%B %d, %Y')}")
         
-        # Show what will be summarized
         with st.expander("📋 This Week's Work Logs", expanded=False):
             sorted_weekly = sorted(weekly_logs, key=lambda x: (x['date'], x['time']))
             for log in sorted_weekly:
@@ -376,7 +318,6 @@ with tab2:
                 st.write(log['work'])
                 st.divider()
         
-        # Generate summary button
         summary_button_text = "🚀 Generate AI Summary" if GENAI_AVAILABLE else "📊 Generate Basic Summary"
         
         if st.button(summary_button_text, type="primary"):
@@ -386,7 +327,6 @@ with tab2:
             st.subheader("📊 Your Weekly Summary")
             st.markdown(summary)
             
-            # Download button for summary
             summary_with_header = f"""# Weekly Summary - Week of {week_start.strftime('%B %d, %Y')}
 
 Generated on: {datetime.now().strftime('%Y-%m-%d at %H:%M')}
@@ -408,7 +348,6 @@ Generated by Recap.AI
         st.info("📝 No work entries found for this week yet.")
         st.write("💡 **Tip:** Add some work entries in the 'Add Work Entry' tab, then come back here to generate your summary.")
 
-# TAB 3: Manage Entries
 with tab3:
     st.header("🛠️ Manage Your Work Entries")
     
@@ -417,26 +356,20 @@ with tab3:
     if all_logs:
         st.write(f"**Total entries:** {len(all_logs)}")
         
-        # Search functionality
         search_term = st.text_input("🔍 Search your work logs:", placeholder="Enter keywords to search...")
         
-        # Filter logs based on search
         if search_term:
             filtered_logs = [log for log in all_logs if search_term.lower() in log['work'].lower()]
             st.write(f"Found {len(filtered_logs)} entries matching '{search_term}'")
         else:
             filtered_logs = all_logs
         
-        # Sort logs by date and time (most recent first)
         sorted_logs = sorted(filtered_logs, key=lambda x: (x['date'], x['time']), reverse=True)
         
-        # Display logs with edit/delete options
         for log in sorted_logs:
             with st.expander(f"📅 {log['date']} at {log['time']} (ID: {log['id']})", expanded=False):
                 
-                # Check if this entry is being edited
                 if st.session_state.editing_entry == log['id']:
-                    # Edit mode
                     st.write("✏️ **Editing Entry**")
                     
                     edit_col1, edit_col2 = st.columns([1, 1])
@@ -482,10 +415,8 @@ with tab3:
                             st.rerun()
                 
                 else:
-                    # View mode
                     st.write(log['work'])
                     
-                    # Show if entry was updated
                     if 'updated_timestamp' in log:
                         st.caption(f"Last updated: {log['updated_timestamp'][:19]}")
                     
@@ -501,7 +432,6 @@ with tab3:
                             st.session_state.show_delete_confirm = log['id']
                             st.rerun()
                     
-                    # Delete confirmation
                     if st.session_state.show_delete_confirm == log['id']:
                         st.warning("⚠️ Are you sure you want to delete this entry?")
                         del_col1, del_col2, del_col3 = st.columns([1, 1, 2])
@@ -523,7 +453,6 @@ with tab3:
     else:
         st.info("📝 No work entries found. Start logging your work in the 'Add Work Entry' tab!")
 
-# TAB 4: View All Logs
 with tab4:
     st.header("📋 All Work Logs")
     
@@ -532,7 +461,6 @@ with tab4:
     if all_logs:
         st.write(f"**Total entries:** {len(all_logs)}")
         
-        # Date range filter
         col1, col2 = st.columns([1, 1])
         with col1:
             start_date = st.date_input(
@@ -547,7 +475,6 @@ with tab4:
                 help="Filter entries up to this date"
             )
         
-        # Filter logs by date range
         filtered_logs = [
             log for log in all_logs 
             if start_date.strftime("%Y-%m-%d") <= log['date'] <= end_date.strftime("%Y-%m-%d")
@@ -555,14 +482,12 @@ with tab4:
         
         st.write(f"**Showing {len(filtered_logs)} entries from {start_date} to {end_date}**")
         
-        # Search within filtered results
         search_term = st.text_input("🔍 Search within filtered results:", placeholder="Enter keywords to search...")
         
         if search_term:
             filtered_logs = [log for log in filtered_logs if search_term.lower() in log['work'].lower()]
             st.write(f"Found {len(filtered_logs)} entries matching '{search_term}'")
         
-        # Sort and display logs
         sorted_logs = sorted(filtered_logs, key=lambda x: (x['date'], x['time']), reverse=True)
         
         for log in sorted_logs:
@@ -571,7 +496,6 @@ with tab4:
                 if 'updated_timestamp' in log:
                     st.caption(f"Last updated: {log['updated_timestamp'][:19]}")
         
-        # Export filtered data
         if filtered_logs:
             export_data = json.dumps({"work_logs": filtered_logs}, indent=2)
             st.download_button(
@@ -584,12 +508,10 @@ with tab4:
     else:
         st.info("📝 No work entries found. Start logging your work in the 'Add Work Entry' tab!")
 
-# Sidebar with app info
 with st.sidebar:
     st.header("ℹ️ About Recap.AI")
     st.write("A comprehensive tool to log your daily work and generate summaries.")
     
-    # Show package status
     if GENAI_AVAILABLE:
         st.success("🤖 AI Features: Enabled")
     else:
@@ -609,7 +531,6 @@ with st.sidebar:
         first_entry = min(all_logs, key=lambda x: x['date'])
         st.metric("Logging Since", first_entry['date'])
         
-        # Show entries by day of week
         days_count = {}
         for log in all_logs:
             day_name = datetime.strptime(log['date'], "%Y-%m-%d").strftime("%A")
