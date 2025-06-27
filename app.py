@@ -13,7 +13,7 @@ st.set_page_config(page_title="Recap.AI", page_icon="📝", layout="wide")
 st.title("📝 Recap.AI - Daily Work Logger")
 st.write("Log your daily work and generate summaries!")
 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 if 'editing_entry' not in st.session_state:
     st.session_state.editing_entry = None
@@ -145,26 +145,17 @@ def generate_ai_summary(weekly_logs):
 
 {logs_text}
 
-You are my smart assistant and experienced email writer. Below are my daily work logs from the past week. 
+Please create a professional weekly summary that includes:
 
-Please write a concise and professional email to my manager summarizing the week’s progress. Structure the email with the following sections:
+1. **Key Accomplishments**: What was completed and delivered this week
+2. **Problem Solving**: Specific challenges that were addressed and resolved  
+3. **Value Created**: The impact and outcomes of the work done
+4. **Obstacles Faced**: Any difficulties or blockers encountered
+5. **Next Week's Focus**: Suggested priorities and follow-up actions
 
-1. ✅ **Accomplishments** – What I completed or delivered.
-2. ⚠️ **Challenges** – Specific problems I encountered and how I solved or addressed them.
-3. 📊 **Results** – The outcome and impact of the work.
-4. 🔜 **Next Week** – What I plan to focus on next week.
-
-Tone: professional, calm, and confident — like a capable contributor updating their manager. Use bullet points where needed and keep it 200–400 words max.
-
-Personalize the intro line (e.g. "Here’s a quick summary of my work during the week of June 24–28").
-
-Do **not** invent tasks — only use what’s given in the logs. If something appears important, emphasize its impact.
-
-End with a friendly closing like:  
-*“Let me know if you’d like to go over anything in more detail.”*
-
-### Example Logs:
-[Insert logs here, e.g., as a bullet list or parsed JSON]"""
+Format the response with clear headings and bullet points where appropriate. 
+Keep it professional but conversational - like you're updating your manager or team.
+Aim for 200-400 words total."""
     
     try:
         response = requests.post(
@@ -176,7 +167,7 @@ End with a friendly closing like:
                 "X-Title": "Recap.AI - Work Logger",
             },
             data=json.dumps({
-                "model": "google/gemma-2-9b-it:free",
+                "model": "google/gemma-3-12b-it:free",
                 "messages": [
                     {
                         "role": "user",
