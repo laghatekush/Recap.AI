@@ -158,6 +158,18 @@ Keep it professional but conversational - like you're updating your manager or t
 Aim for 200-400 words total."""
     
     try:
+        payload = {
+            "model": "google/gemma-3-12b-it:free",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 500,
+            "temperature": 0.7
+        }
+        
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -166,17 +178,7 @@ Aim for 200-400 words total."""
                 "HTTP-Referer": "https://recap-ai.streamlit.app",
                 "X-Title": "Recap.AI - Work Logger",
             },
-            data=json.dumps({
-                "model": "google/gemma-3-12b-it:free",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 500,
-                "temperature": 0.7
-            })
+            data=json.dumps(payload)
         )
         
         if response.status_code == 200:
