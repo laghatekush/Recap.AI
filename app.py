@@ -4,16 +4,16 @@ import os
 from datetime import datetime, timedelta, date
 
 try:
-    import google.generativeai as genai
-    GENAI_AVAILABLE = True
+    import requests
+    AI_AVAILABLE = True
 except ImportError:
-    GENAI_AVAILABLE = False
+    AI_AVAILABLE = False
 
 st.set_page_config(page_title="Recap.AI", page_icon="📝", layout="wide")
 st.title("📝 Recap.AI - Daily Work Logger")
 st.write("Log your daily work and generate summaries!")
 
-GEMINI_API_KEY = "AIzaSyDcT1zigN6J2osDvFNqNZbB_oJ_fEdTbXA"
+OPENROUTER_API_KEY = "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"
 
 if 'editing_entry' not in st.session_state:
     st.session_state.editing_entry = None
@@ -134,36 +134,68 @@ def generate_ai_summary(weekly_logs):
     if not weekly_logs:
         return "No work logs found for this week."
     
-    if not GENAI_AVAILABLE:
+    if not AI_AVAILABLE:
         return generate_basic_summary(weekly_logs)
     
     logs_text = ""
     for log in weekly_logs:
         logs_text += f"Date: {log['date']} at {log['time']}\nWork: {log['work']}\n\n"
     
-    prompt = f"""
-    Based on these daily work logs from this week, create a comprehensive weekly summary:
+    prompt = f"""Based on these daily work logs from this week, create a comprehensive weekly summary:
 
-    {logs_text}
+{logs_text}
 
-    Please create a professional weekly summary that includes:
+You are my smart assistant and experienced email writter. Below are my daily work logs from the past week. 
 
-    1. **Key Accomplishments**: What was completed and delivered this week
-    2. **Problem Solving**: Specific challenges that were addressed and resolved  
-    3. **Value Created**: The impact and outcomes of the work done
-    4. **Obstacles Faced**: Any difficulties or blockers encountered
-    5. **Next Week's Focus**: Suggested priorities and follow-up actions
+Please write a concise and professional email to my manager summarizing the week’s progress. Structure the email with the following sections:
 
-    Format the response with clear headings and bullet points where appropriate. 
-    Keep it professional but conversational - like you're updating your manager or team.
-    Aim for 200-400 words total.
-    """
+1. ✅ **Accomplishments** – What I completed or delivered.
+2. ⚠️ **Challenges** – Specific problems I encountered and how I solved or addressed them.
+3. 📊 **Results** – The outcome and impact of the work.
+4. 🔜 **Next Week** – What I plan to focus on next week.
+
+Tone: professional, calm, and confident — like a capable contributor updating their manager. Use bullet points where needed and keep it 200–400 words max.
+
+Personalize the intro line (e.g. "Here’s a quick summary of my work during the week of June 24–28").
+
+Do **not** invent tasks — only use what’s given in the logs. If something looks important, emphasize it as impact.
+
+End with a friendly closing like:  
+*“Let me know if you’d like to go over anything in more detail.”*
+
+### Example Logs:
+[Insert logs here, e.g. as a bullet list or parsed JSON]
+ """
+
     
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(prompt)
-        return response.text
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://recap-ai.streamlit.app",
+                "X-Title": "Recap.AI - Work Logger",
+            },
+            data=json.dumps({
+                "model": "google/gemma-2-9b-it:free",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 500,
+                "temperature": 0.7
+            })
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            st.error(f"API Error: {response.status_code} - {response.text}")
+            return generate_basic_summary(weekly_logs)
         
     except Exception as e:
         st.error(f"AI service error: {str(e)}")
@@ -209,7 +241,7 @@ def generate_basic_summary(weekly_logs):
 - Most productive day: {max(daily_counts.items(), key=lambda x: x[1])[0]} ({max(daily_counts.values())} entries)
 
 ---
-*Note: This is a basic summary. For AI-powered insights, install the google-generativeai package.*
+*Note: This is a basic summary. For AI-powered insights, install the requests package for API access.*
 """
     
     return summary
@@ -294,10 +326,10 @@ with tab1:
 with tab2:
     st.header("📊 Weekly Summary Generator")
     
-    if GENAI_AVAILABLE:
+    if AI_AVAILABLE:
         st.success("🤖 AI-powered summaries available!")
     else:
-        st.info("📝 Basic summaries available (AI features disabled - google-generativeai not installed)")
+        st.info("📝 Basic summaries available (AI features disabled - requests library not installed)")
     
     weekly_logs = get_this_weeks_logs()
     
@@ -318,7 +350,7 @@ with tab2:
                 st.write(log['work'])
                 st.divider()
         
-        summary_button_text = "🚀 Generate AI Summary" if GENAI_AVAILABLE else "📊 Generate Basic Summary"
+        summary_button_text = "🚀 Generate AI Summary" if AI_AVAILABLE else "📊 Generate Basic Summary"
         
         if st.button(summary_button_text, type="primary"):
             with st.spinner("Creating your weekly summary..."):
@@ -512,12 +544,12 @@ with st.sidebar:
     st.header("ℹ️ About Recap.AI")
     st.write("A comprehensive tool to log your daily work and generate summaries.")
     
-    if GENAI_AVAILABLE:
+    if AI_AVAILABLE:
         st.success("🤖 AI Features: Enabled")
     else:
         st.warning("📝 AI Features: Disabled")
         with st.expander("Enable AI Features"):
-            st.code("pip install google-generativeai")
+            st.code("pip install requests")
             st.write("Restart the app after installation.")
     
     st.subheader("📈 Your Stats")
@@ -545,7 +577,7 @@ with st.sidebar:
     st.write("• Daily work logging")
     st.write("• Date selection")
     st.write("• Edit & delete entries")
-    if GENAI_AVAILABLE:
+    if AI_AVAILABLE:
         st.write("• AI-powered summaries ✅")
     else:
         st.write("• Basic summaries")
