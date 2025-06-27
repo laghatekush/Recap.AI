@@ -145,7 +145,7 @@ def generate_ai_summary(weekly_logs):
 
 {logs_text}
 
-You are my smart assistant and experienced email writter. Below are my daily work logs from the past week. 
+You are my smart assistant and experienced email writer. Below are my daily work logs from the past week. 
 
 Please write a concise and professional email to my manager summarizing the week’s progress. Structure the email with the following sections:
 
@@ -158,15 +158,13 @@ Tone: professional, calm, and confident — like a capable contributor updating 
 
 Personalize the intro line (e.g. "Here’s a quick summary of my work during the week of June 24–28").
 
-Do **not** invent tasks — only use what’s given in the logs. If something looks important, emphasize it as impact.
+Do **not** invent tasks — only use what’s given in the logs. If something appears important, emphasize its impact.
 
 End with a friendly closing like:  
 *“Let me know if you’d like to go over anything in more detail.”*
 
 ### Example Logs:
-[Insert logs here, e.g. as a bullet list or parsed JSON]
- """
-
+[Insert logs here, e.g., as a bullet list or parsed JSON]"""
     
     try:
         response = requests.post(
@@ -547,10 +545,7 @@ with st.sidebar:
     if AI_AVAILABLE:
         st.success("🤖 AI Features: Enabled")
     else:
-        st.warning("📝 AI Features: Disabled")
-        with st.expander("Enable AI Features"):
-            st.code("pip install requests")
-            st.write("Restart the app after installation.")
+        st.info("📝 Using Basic Summaries")
     
     st.subheader("📈 Your Stats")
     all_logs = get_all_logs()
