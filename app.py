@@ -159,36 +159,48 @@ Keep it professional but conversational - like you're updating your manager or t
 Aim for 200-400 words total."""
     
     try:
-        # Updated to use the new SDK format with GPT-4.1-nano model
+        # Debug: Print API key to check if it's being loaded correctly
+        st.write(f"Debug: API Key starts with: {OPENROUTER_API_KEY[:10]}...")
+        
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://recap-ai.streamlit.app",
+            "X-Title": "Recap.AI - Work Logger"
+        }
+        
+        payload = {
+            "model": "openai/gpt-4.1-nano",
+            "messages": [
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 500,
+            "temperature": 0.7
+        }
+        
+        # Debug: Print headers (without full API key)
+        debug_headers = headers.copy()
+        debug_headers["Authorization"] = f"Bearer {OPENROUTER_API_KEY[:10]}..."
+        st.write(f"Debug: Headers: {debug_headers}")
+        
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://recap-ai.streamlit.app",  # Optional. Site URL for rankings
-                "X-Title": "Recap.AI - Work Logger",  # Optional. Site title for rankings
-            },
-            data=json.dumps({
-                "model": "openai/gpt-4.1-nano",  # Updated to GPT-4.1-nano model
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt
-                            }
-                        ]
-                    }
-                ]
-            })
+            headers=headers,
+            json=payload,  # Use json parameter instead of data + json.dumps
+            timeout=30
         )
         
         if response.status_code == 200:
             result = response.json()
             return result['choices'][0]['message']['content']
         else:
-            st.error(f"API Error: {response.status_code} - {response.text}")
+            # Enhanced error reporting
+            st.error(f"API Error: {response.status_code}")
+            st.error(f"Response: {response.text}")
+            st.error(f"Request URL: {response.url}")
             return generate_basic_summary(weekly_logs)
         
     except Exception as e:
